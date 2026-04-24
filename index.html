@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Solicitudes - Uniformes y Gafetes</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        /* Header */
+        .main-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+        }
+
+        .logo-img {
+            height: 120px;
+            width: auto;
+            object-fit: contain;
+            padding-left: 15px;
+            border-left: 3px solid rgba(212, 175, 55, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .logo-img:hover {
+            border-left-color: rgba(212, 175, 55, 0.9);
+            padding-left: 20px;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, #c9a03d, #8b6914);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+        }
+
+        .btn-logout {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: #c0392b;
+            transform: scale(1.02);
+        }
+
+        /* Container */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Dashboard Cards */
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card-icon {
+            width: 55px;
+            height: 55px;
+            background: #e8f5e9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .card-icon.uniformes { background: #e3f2fd; color: #1565c0; }
+        .card-icon.gafetes { background: #fff3e0; color: #e65100; }
+        .card-icon.pendientes { background: #ffebee; color: #c62828; }
+        .card-icon.total { background: #e8f5e9; color: #2e7d32; }
+
+        .card-info h3 {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .card-info .number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 28px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.3s;
+            border-radius: 30px 30px 0 0;
+        }
+
+        .tab-btn i {
+            margin-right: 8px;
+        }
+
+        .tab-btn.active {
+            color: #1565c0;
+            border-bottom: 3px solid #1565c0;
+            background: #e3f2fd;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #f5f5f5;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Forms */
+        .form-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .form-title {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1565c0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        .form-group label i {
+            width: 20px;
+            color: #1565c0;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #1565c0;
+            box-shadow: 0 0 0 3px rgba(21,101,192,0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        /* Empleados Table */
+        .empleados-table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .empleados-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+
+        .empleados-table th,
+        .empleados-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .empleados-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        .btn-add-empleado {
+            margin-top: 15px;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 10px;
+        }
+
+        .btn-add-empleado:hover {
+            background: #1b5e20;
+        }
+
+        .btn-upload-excel {
+            margin-top: 15px;
+            background: #e65100;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-upload-excel:hover {
+            background: #bf360c;
+        }
+
+        .btn-remove-empleado {
+            background: #c62828;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+
+        .btn-remove-empleado:hover {
+            background: #b71c1c;
+        }
+
+        /* Drag & Drop Area */
+        .drop-area {
+            border: 2px dashed #1565c0;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 15px;
+            background: #f8f9fa;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .drop-area.drag-over {
+            background: #e3f2fd;
+            border-color: #0d47a1;
+        }
+
+        .drop-area i {
+            font-size: 2rem;
+            color: #1565c0;
+            margin-bottom: 10px;
+        }
+
+        .drop-area p {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .drop-area .btn-outline {
+            margin-top: 10px;
+            background: white;
+            border: 1px solid #1565c0;
+            color: #1565c0;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        /* Tallas grid para uniformes */
+        .tallas-grid-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .prenda-section {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .prenda-title {
+            font-weight: 600;
+            font-size: 0.7rem;
+            margin-bottom: 5px;
+            color: #1565c0;
+        }
+
+        .tallas-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+        }
+
+        .talla-item {
+            text-align: center;
+        }
+
+        .talla-item label {
+            display: block;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+
+        .talla-item input {
+            width: 55px;
+            padding: 4px;
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        /* Gafetes simple */
+        .gafete-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .gafete-fields input,
+        .gafete-fields select {
+            padding: 6px 8px;
+            font-size: 0.8rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .btn-primary {
+            background: #1565c0;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0d47a1;
+            transform: scale(1.02);
+        }
+
+        .btn-success {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1b5e20;
+        }
+
+        .btn-danger {
+            background: #c62828;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b71c1c;
+        }
+
+        .btn-warning {
+            background: #e65100;
+            color: white;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid #1565c0;
+            color: #1565c0;
+        }
+
+        .btn-outline:hover {
+            background: #e3f2fd;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        /* Tickets List */
+        .tickets-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+        }
+
+        .ticket-card {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-left: 4px solid #1565c0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .ticket-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateX(3px);
+        }
+
+        .ticket-card.uniformes { border-left-color: #1565c0; }
+        .ticket-card.gafetes { border-left-color: #e65100; }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .ticket-folio {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1565c0;
+        }
+
+        .ticket-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .status-pendiente { background: #fff3e0; color: #e65100; }
+        .status-aprobado { background: #e8f5e9; color: #2e7d32; }
+        .status-rechazado { background: #ffebee; color: #c62828; }
+        .status-revision { background: #e3f2fd; color: #1565c0; }
+
+        .ticket-body {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 12px;
+        }
+
+        .ticket-info {
+            flex: 1;
+        }
+
+        .ticket-info p {
+            margin: 5px 0;
+            font-size: 0.85rem;
+        }
+
+        .ticket-info i {
+            width: 25px;
+            color: #666;
+        }
+
+        .ticket-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .ticket-actions button {
+            padding: 6px 14px;
+            font-size: 0.75rem;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+
+        /* Modal Login */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 28px;
+            padding: 40px 35px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-content h2 {
+            color: white !important;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .modal-content p {
+            color: white !important;
+            margin-bottom: 25px;
+            opacity: 0.9;
+        }
+
+        .modal-content .form-group label {
+            color: #e0e0e0;
+        }
+
+        .modal-content .form-group input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .modal-content .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .modal-content .form-group input:focus {
+            border-color: #d4af37;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-content .btn-primary {
+            background: linear-gradient(135deg, #d4af37, #b8962e);
+            color: #1a1a2e;
+        }
+
+        #loginInfo {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .login-logo img {
+            filter: brightness(1.1);
+            max-width: 200px;
+            height: auto;
+        }
+
+        /* Reloj de sesión */
+        .session-timer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a2e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .session-timer i {
+            font-size: 0.85rem;
+            color: #ffd700;
+        }
+
+        .session-timer.warning {
+            background: #e67e22;
+            animation: pulse 1s infinite;
+        }
+
+        .session-timer.critical {
+            background: #e74c3c;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Kanban */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .kanban-column {
+            background: #f5f5f5;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .kanban-title {
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .kanban-card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .kanban-card:hover {
+            transform: translateX(3px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.7rem;
+            color: #999;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 30px;
+        }
+
+        .empleados-count {
+            font-size: 0.7rem;
+            color: #2e7d32;
+            margin-left: 10px;
+        }
+
+        .batch-actions {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .app-blur {
+            filter: blur(3px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .toolbar-buttons .btn {
+            padding: 8px 16px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .logo {
+                flex-direction: column;
+                text-align: center;
+            }
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            .empleados-table {
+                font-size: 0.7rem;
+            }
+            .tallas-mini-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .batch-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .session-timer {
+                bottom: 10px;
+                right: 10px;
+                font-size: 0.65rem;
+                padding: 5px 12px;
+            }
+            .toolbar-buttons {
+                justify-content: center;
+            }
+        }
+
+        #loginOverlay .form-group {
+            margin-bottom: 25px;
+        }
+
+        #loginOverlay .form-group:last-of-type {
+            margin-bottom: 10px;
+        }
+
+        #loginOverlay .form-group input {
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            border-radius: 12px;
+        }
+
+        #loginOverlay .form-group label {
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .modal-content {
+            padding: 40px 35px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- MODAL DE LOGIN -->
+<div id="loginOverlay" class="login-overlay">
+    <div class="modal-content">
+        <div class="login-logo">
+            <img src="https://github.com/internalcontrolengineering/Desarrollos/blob/main/iDentidadOrganizacional.png?raw=true" 
+                 alt="Control Interno" 
+                 onerror="this.style.display='none'">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <h2 style="margin-top: 0px;">Sistema de Gestión de Dotaciones</h2>
+            <p>Uniformes y Gafetes</p>
+        </div>
+        <div class="form-group" style="text-align: left;">
+            <label><i class="fas fa-user"></i> Usuario</label>
+            <input type="text" id="loginUser" placeholder="Ingrese su usuario" autocomplete="off">
+        </div>
+        <div class="form-group" style="text-align: left;">
+            <label><i class="fas fa-lock"></i> Contraseña</label>
+            <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="off">
+        </div>
+        <div class="action-buttons" style="justify-content: center; border-top: none; margin-top: 20px;">
+            <button class="btn btn-primary" id="btnLogin"><i class="fas fa-sign-in-alt"></i> Ingresar</button>
+        </div>
+        <div style="margin-top: 20px; font-size: 0.7rem; color: #999; text-align: center;" id="loginInfo">
+            <i class="fas fa-info-circle"></i> Credenciales proporcionadas por el administrador
+        </div>
+    </div>
+</div>
+
+<!-- RELOJ DE SESIÓN -->
+<div id="sessionTimer" class="session-timer" style="display: none;">
+    <i class="fas fa-hourglass-half"></i>
+    <span id="timerText">01:00</span>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display: block;">
+    <div class="main-header">
+        <div class="logo">
+            <img src="https://github.com/internalcontrolengineering/Desarrollos/blob/main/iDentidadOrganizacional.png?raw=true" 
+                 alt="Control Interno" 
+                 class="logo-img"
+                 onerror="this.onerror=null; this.style.display='none';">
+            <div class="logo-text">
+                <h1>Sistema de Gestión de Dotaciones</h1>
+                <p>Identidad | Control | Seguridad</p>
+            </div>
+        </div>
+        <div class="user-info">
+            <div class="user-badge">
+                <i class="fas fa-user-circle"></i> <span id="currentUserName">Invitado</span>
+                <span id="currentUserRole" class="badge-role"></span>
+            </div>
+            <button class="btn-logout" id="btnLogout" style="display: none;"><i class="fas fa-sign-out-alt"></i> Salir</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Dashboard Cards -->
+        <div class="dashboard-cards">
+            <div class="card">
+                <div class="card-icon uniformes"><i class="fas fa-tshirt"></i></div>
+                <div class="card-info">
+                    <h3>Uniformes Solicitados</h3>
+                    <div class="number" id="totalUniformes">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon gafetes"><i class="fas fa-id-card"></i></div>
+                <div class="card-info">
+                    <h3>Gafetes Solicitados</h3>
+                    <div class="number" id="totalGafetes">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon pendientes"><i class="fas fa-clock"></i></div>
+                <div class="card-info">
+                    <h3>Pendientes</h3>
+                    <div class="number" id="totalPendientes">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon total"><i class="fas fa-ticket-alt"></i></div>
+                <div class="card-info">
+                    <h3>Total Tickets</h3>
+                    <div class="number" id="totalTickets">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de herramientas -->
+        <div class="toolbar-buttons">
+            <button class="btn btn-success" id="btnExportarJSON"><i class="fas fa-download"></i> Exportar JSON</button>
+            <button class="btn btn-primary" id="btnImportarJSON"><i class="fas fa-upload"></i> Importar JSON</button>
+            <button class="btn btn-warning" id="btnFormatoGafetes"><i class="fas fa-id-card"></i> Formato Gafetes</button>
+            <button class="btn btn-warning" id="btnFormatoUniformes"><i class="fas fa-tshirt"></i> Formato Uniformes</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="tabsContainer">
+            <button class="tab-btn" data-tab="solicitar" id="tabSolicitar"><i class="fas fa-plus-circle"></i> Nueva Solicitud</button>
+            <button class="tab-btn" data-tab="mis-tickets" id="tabMisTickets"><i class="fas fa-list-ul"></i> Mis Tickets</button>
+            <button class="tab-btn" data-tab="gestionar" id="tabGestionar"><i class="fas fa-tasks"></i> Gestionar</button>
+            <button class="tab-btn" data-tab="kanban" id="tabKanban"><i class="fas fa-columns"></i> Tablero</button>
+        </div>
+
+        <!-- Tab Nueva Solicitud -->
+        <div id="solicitar" class="tab-content">
+            <div class="form-card">
+                <div class="form-title">
+                    <i class="fas fa-file-alt"></i> Nueva Solicitud
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Tipo de Solicitud *</label>
+                        <select id="tipoSolicitud">
+                            <option value="">Seleccione...</option>
+                            <option value="uniformes">👕 Uniformes (Camisas y Chalecos)</option>
+                            <option value="gafetes">🪪 Gafetes / Credenciales</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Ubicación *</label>
+                        <select id="ubicacion">
+                            <option value="">Seleccione...</option>
+                            <option value="Corporativo">Corporativo</option>
+                            <option value="Operativo">Operativo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar"></i> Fecha de Expedición *</label>
+                        <input type="text" id="fechaExpedicionGeneral" class="datepicker" placeholder="Seleccione fecha">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-alt"></i> Fecha de Vencimiento</label>
+                        <input type="text" id="fechaVencimientoGeneral" class="datepicker" placeholder="Seleccione fecha o deje vacío">
+                    </div>
+                </div>
+
+                <!-- Batch Upload Area -->
+                <div class="form-title" style="margin-top: 10px;">
+                    <i class="fas fa-file-excel"></i> Carga Masiva desde Excel
+                </div>
+                
+                <div id="dropArea" class="drop-area">
+                    <i class="fas fa-file-excel"></i>
+                    <p>Arrastra y suelta tu archivo Excel aquí o haz clic para seleccionar</p>
+                    <p style="font-size: 0.7rem; margin-top: 5px;">Formatos soportados: .xlsx, .xls</p>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
+                    <button type="button" class="btn-outline" id="btnSelectFile"><i class="fas fa-folder-open"></i> Seleccionar archivo</button>
+                </div>
+
+                <!-- Tabla de Empleados -->
+                <div class="form-title" style="margin-top: 20px;">
+                    <i class="fas fa-users"></i> Empleados <span id="empleadosCount" class="empleados-count">(0 empleados)</span>
+                </div>
+                
+                <div class="empleados-table-container">
+                    <table class="empleados-table" id="empleadosTable">
+                        <thead id="tablaHeaders">
+                            <!-- Los headers se generan dinámicamente -->
+                        </thead>
+                        <tbody id="empleadosBody">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="batch-actions">
+                    <button type="button" class="btn-add-empleado" id="btnAgregarEmpleado">
+                        <i class="fas fa-plus-circle"></i> Agregar Empleado Manual
+                    </button>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label><i class="fas fa-comment-dots"></i> Justificación / Comentarios</label>
+                    <textarea id="justificacion" placeholder="Motivo de la solicitud..."></textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btnRegistrarSolicitud"><i class="fas fa-paper-plane"></i> Registrar Solicitud</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Mis Tickets -->
+        <div id="mis-tickets" class="tab-content">
+            <div class="tickets-container" id="misTicketsContainer">
+                <div class="empty-message"><i class="fas fa-inbox"></i> No hay solicitudes registradas</div>
+            </div>
+        </div>
+
+        <!-- Tab Gestionar -->
+        <div id="gestionar" class="tab-content">
+            <div class="tickets-container" id="gestionarContainer">
+                <div class="empty-message"><i class="fas fa-inbox"></i> No hay solicitudes pendientes</div>
+            </div>
+        </div>
+
+        <!-- Tab Kanban -->
+        <div id="kanban" class="tab-content">
+            <div class="kanban-board" id="kanbanBoard"></div>
+        </div>
+
+        <div class="footer">
+            <p>Sistema de Gestión de Solicitudes - Uniformes y Gafetes | Tickets con seguimiento</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== INICIALIZAR SUPABASE ==========
+    const { createClient } = supabase;
+    
+    const supabaseClient = createClient(
+        'https://huqgvukjnsnykwqyqrzh.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1cWd2dWtqbnNueWt3cXlxcnpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNTU3OTQsImV4cCI6MjA5MjYzMTc5NH0.cyLOlpR2Xbz2K_P4_PHTVp927RAILTtEjDHhYXvUKbU'
+    );
+    
+    // ========== VARIABLES GLOBALES ==========
+    let syncInProgress = false;
+    let changesSinceLastSync = false;
+    
+    // ========== FUNCIONES DE SINCRONIZACIÓN CON SUPABASE ==========
+    async function saveDataToSupabase() {
+        if (syncInProgress) return false;
+        
+        syncInProgress = true;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('solicitudes_data')
+                .upsert({
+                    id: 'app_data',
+                    solicitudes: solicitudes,
+                    empleados: empleadosList,
+                    folios: {
+                        uniformes: nextFolioUniformes,
+                        gafetes: nextFolioGafetes
+                    },
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'id' });
+            
+            if (error) throw error;
+            
+            localStorage.setItem('lastSyncTime', Date.now().toString());
+            changesSinceLastSync = false;
+            syncInProgress = false;
+            return true;
+            
+        } catch (error) {
+            console.error('Error al guardar en Supabase:', error);
+            syncInProgress = false;
+            return false;
+        }
+    }
+    
+    async function loadDataFromSupabase() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('solicitudes_data')
+                .select('*')
+                .eq('id', 'app_data')
+                .single();
+            
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    console.log('No hay datos en Supabase, creando registro inicial...');
+                    await supabaseClient
+                        .from('solicitudes_data')
+                        .insert({
+                            id: 'app_data',
+                            solicitudes: [],
+                            empleados: [],
+                            folios: { uniformes: 1, gafetes: 1 },
+                            updated_at: new Date().toISOString()
+                        });
+                    return await loadDataFromSupabase();
+                } else {
+                    throw error;
+                }
+            }
+            
+            if (data) {
+                if (data.solicitudes && Array.isArray(data.solicitudes)) {
+                    solicitudes = data.solicitudes;
+                    console.log(`✅ Cargadas ${solicitudes.length} solicitudes desde Supabase`);
+                }
+                if (data.empleados && Array.isArray(data.empleados)) {
+                    empleadosList = data.empleados;
+                    console.log(`✅ Cargados ${empleadosList.length} empleados desde Supabase`);
+                }
+                if (data.folios) {
+                    nextFolioUniformes = data.folios.uniformes || 1;
+                    nextFolioGafetes = data.folios.gafetes || 1;
+                }
+                
+                saveToLocalStorage();
+                localStorage.setItem('lastSyncTime', Date.now().toString());
+                return true;
+            }
+            return false;
+            
+        } catch (error) {
+            console.error('Error al cargar desde Supabase:', error);
+            return false;
+        }
+    }
+    
+    async function manualSync() {
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed; bottom:80px; right:20px; background:#1565c0; color:white; padding:10px 20px; border-radius:30px; z-index:10000; font-size:0.8rem;';
+        toast.innerHTML = '🔄 Sincronizando con la nube...';
+        document.body.appendChild(toast);
+        
+        await saveDataToSupabase();
+        await loadDataFromSupabase();
+        
+        actualizarDashboard();
+        renderMisTickets();
+        renderGestionar();
+        renderKanban();
+        renderizarEmpleados();
+        
+        toast.remove();
+        const successToast = document.createElement('div');
+        successToast.style.cssText = 'position:fixed; bottom:80px; right:20px; background:#2e7d32; color:white; padding:10px 20px; border-radius:30px; z-index:10000; font-size:0.8rem;';
+        successToast.innerHTML = '✅ Sincronización completada';
+        document.body.appendChild(successToast);
+        setTimeout(() => successToast.remove(), 3000);
+    }
+    
+    function startAutoSync() {
+        setInterval(async () => {
+            if (changesSinceLastSync && !syncInProgress) {
+                await saveDataToSupabase();
+            }
+        }, 300000); // Cada 5 minutos
+    }
+    
+    function startRemoteCheck() {
+        setInterval(async () => {
+            if (syncInProgress) return;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('solicitudes_data')
+                    .select('updated_at')
+                    .eq('id', 'app_data')
+                    .single();
+                
+                if (error) throw error;
+                
+                if (data) {
+                    const remoteLastUpdate = new Date(data.updated_at).getTime();
+                    const localLastSync = parseInt(localStorage.getItem('lastSyncTime') || 0);
+                    
+                    if (remoteLastUpdate > localLastSync) {
+                        console.log('Cambios remotos detectados, actualizando...');
+                        await loadDataFromSupabase();
+                        actualizarDashboard();
+                        renderMisTickets();
+                        renderGestionar();
+                        renderKanban();
+                        renderizarEmpleados();
+                    }
+                }
+            } catch (error) {
+                console.error('Error al verificar cambios remotos:', error);
+            }
+        }, 60000); // Cada minuto
+    }
+    
+    // ========== SISTEMA DE SESIÓN ==========
+    const MINUTOS_SESION = 2;
+    const TIEMPO_INACTIVIDAD = MINUTOS_SESION * 60 * 1000;
+    let tiempoRestante = MINUTOS_SESION * 60;
+    let temporizadorInactividad = null;
+    let temporizadorReloj = null;
+    let currentUser = null;
+    
+    function actualizarReloj() {
+        const timerElement = document.getElementById('timerText');
+        const sessionTimerDiv = document.getElementById('sessionTimer');
+        if (!timerElement) return;
+        const minutos = Math.floor(tiempoRestante / 60);
+        const segundos = tiempoRestante % 60;
+        timerElement.textContent = `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+        if (tiempoRestante <= 10) {
+            sessionTimerDiv.classList.add('critical');
+            sessionTimerDiv.classList.remove('warning');
+        } else if (tiempoRestante <= 30) {
+            sessionTimerDiv.classList.add('warning');
+            sessionTimerDiv.classList.remove('critical');
+        } else {
+            sessionTimerDiv.classList.remove('warning', 'critical');
+        }
+    }
+    
+    function iniciarContadorReloj() {
+        if (temporizadorReloj) clearInterval(temporizadorReloj);
+        tiempoRestante = MINUTOS_SESION * 60;
+        actualizarReloj();
+        temporizadorReloj = setInterval(() => {
+            if (tiempoRestante > 0 && currentUser) {
+                tiempoRestante--;
+                actualizarReloj();
+            }
+        }, 1000);
+    }
+    
+    function reiniciarTemporizadorSesion() {
+        if (temporizadorInactividad) clearTimeout(temporizadorInactividad);
+        if (currentUser) {
+            temporizadorInactividad = setTimeout(() => {
+                cerrarSesionPorInactividad();
+            }, TIEMPO_INACTIVIDAD);
+            tiempoRestante = MINUTOS_SESION * 60;
+            actualizarReloj();
+        }
+    }
+    
+    function activarDetectorInactividad() {
+        const eventos = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        eventos.forEach(evento => {
+            document.addEventListener(evento, reiniciarTemporizadorSesion);
+        });
+    }
+    
+    async function cerrarSesionPorInactividad() {
+        if (currentUser) {
+            if (temporizadorReloj) clearInterval(temporizadorReloj);
+            await Swal.fire({
+                title: '⏰ Sesión Expirada',
+                text: `${MINUTOS_SESION} minuto${MINUTOS_SESION > 1 ? 's' : ''} sin actividad. Su sesión ha finalizado.`,
+                icon: 'info',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            cerrarSesion();
+        }
+    }
+    
+    function guardarSesionEnStorage() {
+        if (currentUser) {
+            localStorage.setItem('sesionActiva', 'true');
+            localStorage.setItem('usuarioActual', JSON.stringify(currentUser));
+        }
+    }
+    
+    function verificarSesionAlCargar() {
+        const sesionValida = localStorage.getItem('sesionActiva');
+        const usuarioGuardado = localStorage.getItem('usuarioActual');
+        if (sesionValida === 'true' && usuarioGuardado) {
+            try {
+                const usuario = JSON.parse(usuarioGuardado);
+                const usuarioMatch = USUARIOS_CONFIG.find(u => u.nombre === usuario.nombre && u.rol === usuario.rol);
+                if (usuarioMatch) {
+                    currentUser = usuario;
+                    return true;
+                }
+            } catch(e) {}
+        }
+        localStorage.removeItem('sesionActiva');
+        localStorage.removeItem('usuarioActual');
+        return false;
+    }
+    
+    // ========== CONFIGURACIÓN DE USUARIOS ==========
+    const USUARIOS_CONFIG = [
+        { usuario: 'sjobs', password: 'sjobs1', nombre: 'Steve Jobs', rol: 'solicitante' },
+        { usuario: 'swozniak', password: 'swozniak1', nombre: 'Steve Wozniak', rol: 'solicitante' },
+        { usuario: 'nleon', password: 'nleon1', nombre: 'Naim León', rol: 'coordinador' },
+        { usuario: 'rmatos', password: 'rmatos1', nombre: 'Rebeca Matos', rol: 'coordinador' },
+        { usuario: 'aberumen', password: 'aberumen1', nombre: 'Antonio Berumen', rol: 'coordinador' },
+        { usuario: 'administrador', password: 'controlinterno1', nombre: 'Control Interno', rol: 'administrador' },
+    ];
+    
+    const UBICACIONES_CONFIG = ['Corporativo', 'Operativo'];
+    
+    let usuarios = {};
+    USUARIOS_CONFIG.forEach(user => {
+        usuarios[user.usuario] = { password: user.password, nombre: user.nombre, rol: user.rol };
+    });
+    
+    let solicitudes = [];
+    let nextFolioUniformes = 1;
+    let nextFolioGafetes = 1;
+    let empleadosList = [];
+    
+    const TALLAS = ['CH', 'M', 'G', 'XG', 'XXG'];
+    
+    const estados = {
+        PENDIENTE: 'Pendiente',
+        REVISION: 'En revisión',
+        APROBADO: 'Aprobado',
+        RECHAZADO: 'Rechazado'
+    };
+    
+    // ========== FUNCIONES DE PERSISTENCIA ==========
+    function cargarDatos() {
+        const stored = localStorage.getItem('solicitudes_sistema_v3');
+        if (stored) solicitudes = JSON.parse(stored);
+        const storedFolios = localStorage.getItem('folios_sistema_v3');
+        if (storedFolios) {
+            const folios = JSON.parse(storedFolios);
+            nextFolioUniformes = folios.uniformes || 1;
+            nextFolioGafetes = folios.gafetes || 1;
+        }
+    }
+    
+    function guardarDatos() {
+        localStorage.setItem('solicitudes_sistema_v3', JSON.stringify(solicitudes));
+        localStorage.setItem('folios_sistema_v3', JSON.stringify({ uniformes: nextFolioUniformes, gafetes: nextFolioGafetes }));
+        changesSinceLastSync = true;
+    }
+    
+    function guardarEmpleados() {
+        localStorage.setItem('empleados_sistema_v3', JSON.stringify(empleadosList));
+        changesSinceLastSync = true;
+    }
+    
+    function cargarEmpleados() {
+        const stored = localStorage.getItem('empleados_sistema_v3');
+        if (stored) empleadosList = JSON.parse(stored);
+    }
+    
+    function saveToLocalStorage() {
+        guardarDatos();
+        guardarEmpleados();
+    }
+    
+    function generarFolio(tipo) {
+        let folio;
+        if (tipo === 'uniformes') {
+            folio = `UNF-${String(nextFolioUniformes).padStart(5, '0')}`;
+            nextFolioUniformes++;
+        } else {
+            folio = `GAF-${String(nextFolioGafetes).padStart(5, '0')}`;
+            nextFolioGafetes++;
+        }
+        guardarDatos();
+        return folio;
+    }
+    
+    // ========== FUNCIONES DE EXPORTAR/IMPORTAR ==========
+    async function exportarJSON() {
+        if (!solicitudes.length) {
+            Swal.fire('Sin datos', 'No hay registros para exportar', 'info');
+            return;
+        }
+        const datosExportar = { fechaExportacion: new Date().toISOString(), totalRegistros: solicitudes.length, registros: solicitudes };
+        const jsonStr = JSON.stringify(datosExportar, null, 2);
+        const nombreSugerido = `Respaldo_solicitudes_iDO_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        
+        if ('showSaveFilePicker' in window) {
+            try {
+                const fileHandle = await window.showSaveFilePicker({ suggestedName: nombreSugerido, types: [{ description: 'Archivo JSON', accept: { 'application/json': ['.json'] } }] });
+                const writable = await fileHandle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                Swal.fire('Exportado', `Se exportaron ${solicitudes.length} registros`, 'success');
+            } catch (error) {
+                if (error.name !== 'AbortError') exportarJSONFallback(nombreSugerido, jsonStr);
+            }
+        } else {
+            exportarJSONFallback(nombreSugerido, jsonStr);
+        }
+    }
+    
+    function exportarJSONFallback(nombreArchivo, contenido) {
+        const blob = new Blob([contenido], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        Swal.fire('Exportado', `Se exportaron ${solicitudes.length} registros`, 'success');
+    }
+    
+    function importarJSON() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const contenido = JSON.parse(event.target.result);
+                    let nuevosRegistros = [];
+                    if (Array.isArray(contenido)) nuevosRegistros = contenido;
+                    else if (contenido.registros && Array.isArray(contenido.registros)) nuevosRegistros = contenido.registros;
+                    else throw new Error('Formato no reconocido');
+                    
+                    const registrosExistentes = new Map();
+                    solicitudes.forEach(s => { registrosExistentes.set(`${s.folio}|${s.fecha}`, s); });
+                    
+                    let duplicadosEncontrados = 0, importados = 0;
+                    for (const nuevo of nuevosRegistros) {
+                        const clave = `${nuevo.folio}|${nuevo.fecha}`;
+                        if (!registrosExistentes.has(clave) && nuevo.folio && nuevo.tipo) {
+                            nuevo.id = Date.now().toString() + Math.random().toString();
+                            solicitudes.unshift(nuevo);
+                            importados++;
+                            registrosExistentes.set(clave, nuevo);
+                        } else duplicadosEncontrados++;
+                    }
+                    guardarDatos();
+                    await saveDataToSupabase();
+                    actualizarDashboard();
+                    renderMisTickets();
+                    renderGestionar();
+                    renderKanban();
+                    let mensaje = `Importación completada: ${importados} registros nuevos agregados.`;
+                    if (duplicadosEncontrados > 0) mensaje += ` ${duplicadosEncontrados} duplicados fueron omitidos.`;
+                    Swal.fire('Importación', mensaje, 'success');
+                } catch (error) {
+                    Swal.fire('Error', 'El archivo JSON no tiene el formato correcto', 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+    
+    function descargarFormatoGafetes() {
+        const headers = ['Nombre del Empleado', 'Número de Empleado', 'Puesto', 'Tipo de Credencial'];
+        const ejemplo = ['Juan Pérez', 'EMP001', 'Analista', 'personal'];
+        const ejemplo2 = ['María García', 'EMP002', 'Coordinadora', 'personal'];
+        const ejemplo3 = ['Carlos López', 'EMP003', 'Visitante', 'visitante'];
+        const data = [headers, ejemplo, ejemplo2, ejemplo3];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:30}, {wch:20}, {wch:25}, {wch:20}];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Formato_Gafetes');
+        XLSX.writeFile(wb, `Formato_Solicitud_Gafetes.xlsx`);
+        Swal.fire('Plantilla descargada', 'Formato para solicitud de gafetes descargado correctamente', 'success');
+    }
+    
+    function descargarFormatoUniformes() {
+        const headers = ['Nombre del Empleado', 'Camisa CH', 'Camisa M', 'Camisa G', 'Camisa XG', 'Camisa XXG', 'Chaleco CH', 'Chaleco M', 'Chaleco G', 'Chaleco XG', 'Chaleco XXG'];
+        const ejemplo = ['Juan Pérez', 1, 0, 1, 0, 0, 0, 1, 1, 0, 0];
+        const ejemplo2 = ['María García', 0, 2, 0, 0, 0, 0, 0, 2, 0, 0];
+        const ejemplo3 = ['Carlos López', 0, 0, 1, 1, 0, 1, 0, 0, 1, 0];
+        const data = [headers, ejemplo, ejemplo2, ejemplo3];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:25}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Formato_Uniformes');
+        XLSX.writeFile(wb, `Formato_Solicitud_Uniformes.xlsx`);
+        Swal.fire('Plantilla descargada', 'Formato para solicitud de uniformes descargado correctamente', 'success');
+    }
+    
+    // ========== FUNCIONES DE CARGA MASIVA EXCEL ==========
+    function procesarExcel(data, tipo) {
+        try {
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+            if (!rows || rows.length < 2) { Swal.fire('Error', 'El archivo Excel no tiene datos válidos', 'error'); return false; }
+            const headers = rows[0];
+            const nuevosEmpleados = [];
+            
+            if (tipo === 'uniformes') {
+                const nombreIdx = headers.findIndex(h => h && h.toString().toLowerCase().includes('nombre'));
+                const camisaTallas = {}, chalecoTallas = {};
+                TALLAS.forEach(talla => { camisaTallas[talla] = headers.findIndex(h => h && h.toString().toLowerCase().includes(`camisa ${talla.toLowerCase()}`)); });
+                TALLAS.forEach(talla => { chalecoTallas[talla] = headers.findIndex(h => h && h.toString().toLowerCase().includes(`chaleco ${talla.toLowerCase()}`)); });
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || !row[nombreIdx] || row[nombreIdx].toString().trim() === '') continue;
+                    const camisas = {}, chalecos = {};
+                    TALLAS.forEach(talla => { camisas[talla] = camisaTallas[talla] !== -1 ? parseInt(row[camisaTallas[talla]]) || 0 : 0; });
+                    TALLAS.forEach(talla => { chalecos[talla] = chalecoTallas[talla] !== -1 ? parseInt(row[chalecoTallas[talla]]) || 0 : 0; });
+                    nuevosEmpleados.push({ id: Date.now() + Math.random() + i, nombre: row[nombreIdx].toString().trim(), camisas: camisas, chalecos: chalecos });
+                }
+            } else if (tipo === 'gafetes') {
+                const nombreIdx = 0;
+                let numEmpleadoIdx = -1, puestoIdx = -1, tipoCredIdx = -1;
+                headers.forEach((h, idx) => {
+                    if (!h) return;
+                    const header = h.toString().toLowerCase().trim();
+                    if (header.includes('numero') || header.includes('num') || header.includes('número')) numEmpleadoIdx = idx;
+                    if (header.includes('puesto') || header.includes('cargo')) puestoIdx = idx;
+                    if (header === 'tipo' || header.includes('tipo credencial')) tipoCredIdx = idx;
+                });
+                if (numEmpleadoIdx === -1 && headers.length > 1) numEmpleadoIdx = 1;
+                if (puestoIdx === -1 && headers.length > 2) puestoIdx = 2;
+                if (tipoCredIdx === -1 && headers.length > 3) tipoCredIdx = 3;
+                
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || !row[nombreIdx] || row[nombreIdx].toString().trim() === '') continue;
+                    const nombre = row[nombreIdx].toString().trim();
+                    let numEmpleado = '';
+                    if (numEmpleadoIdx !== -1 && row[numEmpleadoIdx]) {
+                        const valor = row[numEmpleadoIdx].toString().trim();
+                        if (valor !== nombre && valor !== '') numEmpleado = valor;
+                    }
+                    let puesto = '';
+                    if (puestoIdx !== -1 && row[puestoIdx]) {
+                        const valor = row[puestoIdx].toString().trim();
+                        if (valor !== nombre && valor !== '') puesto = valor;
+                    }
+                    let tipoCredencial = 'personal';
+                    if (tipoCredIdx !== -1 && row[tipoCredIdx]) {
+                        const valor = row[tipoCredIdx].toString().toLowerCase().trim();
+                        if (valor.includes('visitante')) tipoCredencial = 'visitante';
+                        else if (valor.includes('proveedor')) tipoCredencial = 'proveedor';
+                        else if (valor.includes('personal')) tipoCredencial = 'personal';
+                    }
+                    nuevosEmpleados.push({ id: Date.now() + Math.random() + i, nombre: nombre, numEmpleado: numEmpleado, puesto: puesto, tipoCredencial: tipoCredencial });
+                }
+            }
+            
+            if (nuevosEmpleados.length === 0) { Swal.fire('Advertencia', 'No se encontraron empleados válidos en el archivo', 'warning'); return false; }
+            empleadosList.push(...nuevosEmpleados);
+            guardarEmpleados();
+            renderizarEmpleados();
+            Swal.fire('✅ Carga exitosa', `Se agregaron ${nuevosEmpleados.length} empleados desde el archivo Excel`, 'success');
+            return true;
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo procesar el archivo Excel. Verifique el formato.', 'error');
+            return false;
+        }
+    }
+    
+    function setupDragAndDrop() {
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const btnSelectFile = document.getElementById('btnSelectFile');
+        const tipoSolicitud = document.getElementById('tipoSolicitud');
+        btnSelectFile.addEventListener('click', () => { if (!tipoSolicitud.value) Swal.fire('Error', 'Primero debe seleccionar el tipo de solicitud', 'warning'); else fileInput.click(); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) { const reader = new FileReader(); reader.onload = (e) => { procesarExcel(e.target.result, tipoSolicitud.value); }; reader.readAsArrayBuffer(e.target.files[0]); fileInput.value = ''; } });
+        dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('drag-over'); });
+        dropArea.addEventListener('dragleave', () => { dropArea.classList.remove('drag-over'); });
+        dropArea.addEventListener('drop', (e) => { e.preventDefault(); dropArea.classList.remove('drag-over'); if (!tipoSolicitud.value) Swal.fire('Error', 'Primero debe seleccionar el tipo de solicitud', 'warning'); else { const files = e.dataTransfer.files; if (files.length && (files[0].name.endsWith('.xlsx') || files[0].name.endsWith('.xls'))) { const reader = new FileReader(); reader.onload = (e) => { procesarExcel(e.target.result, tipoSolicitud.value); }; reader.readAsArrayBuffer(files[0]); } else Swal.fire('Error', 'Por favor, sube un archivo Excel válido (.xlsx o .xls)', 'error'); } });
+    }
+    
+    // ========== FUNCIONES DE GESTIÓN DE EMPLEADOS ==========
+    function actualizarHeadersSegunTipo() {
+        const tipo = document.getElementById('tipoSolicitud').value;
+        const headersRow = document.getElementById('tablaHeaders');
+        if (tipo === 'uniformes') {
+            headersRow.innerHTML = `<th style="min-width: 150px;">Nombre del Empleado</th><th style="min-width: 250px;">Camisas (por talla)</th><th style="min-width: 250px;">Chalecos (por talla)</th><th style="width: 80px;">Acciones</th>`;
+        } else if (tipo === 'gafetes') {
+            headersRow.innerHTML = `<th style="min-width: 150px;">Nombre del Empleado</th><th style="min-width: 150px;">Número de Empleado</th><th style="min-width: 150px;">Puesto</th><th style="min-width: 150px;">Tipo de Credencial</th><th style="width: 80px;">Acciones</th>`;
+        } else {
+            headersRow.innerHTML = '<th>Seleccione un tipo de solicitud</th>';
+        }
+    }
+    
+    function renderizarEmpleados() {
+        const tipo = document.getElementById('tipoSolicitud').value;
+        const tbody = document.getElementById('empleadosBody');
+        if (!tipo) { tbody.innerHTML = '<tr><td colspan="5">Seleccione un tipo de solicitud primero</td></tr>'; document.getElementById('empleadosCount').textContent = '(0 empleados)'; return; }
+        if (empleadosList.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay empleados agregados. Use carga masiva Excel o "Agregar Empleado Manual"</td></tr>'; document.getElementById('empleadosCount').textContent = '(0 empleados)'; return; }
+        let html = '';
+        empleadosList.forEach((emp, idx) => {
+            if (tipo === 'uniformes') {
+                html += `<tr><td><input type="text" value="${emp.nombre.replace(/"/g, '&quot;')}" placeholder="Nombre completo" style="width: 100%;" data-index="${idx}" class="emp-nombre"></td>
+                        <td><div class="tallas-mini-grid">${TALLAS.map(talla => `<div class="talla-item"><label>${talla}</label><input type="number" value="${emp.camisas?.[talla] || 0}" min="0" data-tipo="camisas" data-talla="${talla}" data-index="${idx}" class="emp-cantidad"></div>`).join('')}</div></td>
+                        <td><div class="tallas-mini-grid">${TALLAS.map(talla => `<div class="talla-item"><label>${talla}</label><input type="number" value="${emp.chalecos?.[talla] || 0}" min="0" data-tipo="chalecos" data-talla="${talla}" data-index="${idx}" class="emp-cantidad"></div>`).join('')}</div></td>
+                        <td><button class="btn-remove-empleado" data-index="${idx}"><i class="fas fa-trash"></i> Eliminar</button></td></tr>`;
+            } else if (tipo === 'gafetes') {
+                html += `<tr><td><input type="text" value="${emp.nombre.replace(/"/g, '&quot;')}" placeholder="Nombre completo" style="width: 100%;" data-index="${idx}" class="emp-nombre"></td>
+                        <td><input type="text" value="${emp.numEmpleado || ''}" placeholder="Número de empleado" style="width: 100%;" data-index="${idx}" class="emp-numero"></td>
+                        <td><input type="text" value="${emp.puesto || ''}" placeholder="Puesto" style="width: 100%;" data-index="${idx}" class="emp-puesto"></td>
+                        <td><select data-index="${idx}" class="emp-tipo"><option value="personal" ${emp.tipoCredencial === 'personal' ? 'selected' : ''}>Personal - Empleado</option><option value="visitante" ${emp.tipoCredencial === 'visitante' ? 'selected' : ''}>Visitante</option><option value="proveedor" ${emp.tipoCredencial === 'proveedor' ? 'selected' : ''}>Proveedor</option></select></td>
+                        <td><button class="btn-remove-empleado" data-index="${idx}"><i class="fas fa-trash"></i> Eliminar</button></td></tr>`;
+            }
+        });
+        tbody.innerHTML = html;
+        document.getElementById('empleadosCount').textContent = `(${empleadosList.length} empleados)`;
+        
+        document.querySelectorAll('.emp-nombre').forEach(input => { input.addEventListener('change', (e) => { const idx = parseInt(e.target.dataset.index); if (empleadosList[idx]) empleadosList[idx].nombre = e.target.value; guardarEmpleados(); }); });
+        document.querySelectorAll('.emp-cantidad').forEach(input => { input.addEventListener('change', (e) => { const idx = parseInt(e.target.dataset.index); const tipo = e.target.dataset.tipo; const talla = e.target.dataset.talla; if (empleadosList[idx]) { if (!empleadosList[idx][tipo]) empleadosList[idx][tipo] = {}; empleadosList[idx][tipo][talla] = parseInt(e.target.value) || 0; guardarEmpleados(); } }); });
+        document.querySelectorAll('.emp-numero').forEach(input => { input.addEventListener('change', (e) => { const idx = parseInt(e.target.dataset.index); if (empleadosList[idx]) empleadosList[idx].numEmpleado = e.target.value; guardarEmpleados(); }); });
+        document.querySelectorAll('.emp-puesto').forEach(input => { input.addEventListener('change', (e) => { const idx = parseInt(e.target.dataset.index); if (empleadosList[idx]) empleadosList[idx].puesto = e.target.value; guardarEmpleados(); }); });
+        document.querySelectorAll('.emp-tipo').forEach(select => { select.addEventListener('change', (e) => { const idx = parseInt(e.target.dataset.index); if (empleadosList[idx]) empleadosList[idx].tipoCredencial = e.target.value; guardarEmpleados(); }); });
+        document.querySelectorAll('.btn-remove-empleado').forEach(btn => { btn.addEventListener('click', (e) => { const idx = parseInt(btn.dataset.index); empleadosList.splice(idx, 1); guardarEmpleados(); renderizarEmpleados(); }); });
+    }
+    
+    function agregarEmpleado() {
+        const tipo = document.getElementById('tipoSolicitud').value;
+        if (!tipo) { Swal.fire('Error', 'Primero debe seleccionar el tipo de solicitud', 'warning'); return; }
+        if (tipo === 'uniformes') {
+            const camisas = {}, chalecos = {};
+            TALLAS.forEach(talla => { camisas[talla] = 0; chalecos[talla] = 0; });
+            empleadosList.push({ id: Date.now() + Math.random(), nombre: '', camisas: camisas, chalecos: chalecos });
+        } else {
+            empleadosList.push({ id: Date.now() + Math.random(), nombre: '', numEmpleado: '', puesto: '', tipoCredencial: 'personal' });
+        }
+        guardarEmpleados();
+        renderizarEmpleados();
+    }
+    
+    // ========== FUNCIONES DE CORREO ==========
+    function enviarCorreo(ticket, accion, comentario = '') {
+        let asunto = '', cuerpo = '';
+        const destinatario = 'solicitudes@empresa.com';
+        
+        function construirDetalleSolicitud() {
+            let detalle = `📋 DETALLE DE SOLICITUD\n${'═'.repeat(50)}\n\nFolio: ${ticket.folio}\nTipo: ${ticket.tipo === 'uniformes' ? 'Uniformes (Camisas y Chalecos)' : 'Gafete'}\nSolicitante: ${ticket.solicitante}\nUbicación: ${ticket.ubicacion || ticket.departamento || 'No especificada'}\nFecha Expedición: ${ticket.fechaExpedicion}\nFecha Vencimiento: ${ticket.fechaVencimiento || 'Sin fecha'}\nFecha Registro: ${ticket.fecha}\nJustificación: ${ticket.justificacion || 'Sin justificación'}\n\n📋 Empleados (${ticket.empleados?.length || 0}):\n${'─'.repeat(50)}\n`;
+            if (ticket.empleados && ticket.empleados.length > 0) {
+                if (ticket.tipo === 'gafetes') {
+                    ticket.empleados.forEach(emp => { const nombre = (emp.nombre || 'N/A').padEnd(25); const numEmpleado = (emp.numEmpleado && emp.numEmpleado !== emp.nombre) ? emp.numEmpleado : 'No especificado'; const puesto = emp.puesto || 'N/A'; const tipoTexto = emp.tipoCredencial === 'personal' ? 'Personal' : emp.tipoCredencial === 'visitante' ? 'Visitante' : 'Proveedor'; detalle += `${nombre} | N° Empleado: ${numEmpleado} | Puesto: ${puesto} | Tipo Credencial: ${tipoTexto}\n`; });
+                } else if (ticket.tipo === 'uniformes') {
+                    ticket.empleados.forEach(emp => { const nombre = emp.nombre || 'N/A'; let items = []; TALLAS.forEach(talla => { const cantidadCamisa = emp.camisas?.[talla] || 0; if (cantidadCamisa > 0) items.push(`${cantidadCamisa} Camisa ${talla}`); }); TALLAS.forEach(talla => { const cantidadChaleco = emp.chalecos?.[talla] || 0; if (cantidadChaleco > 0) items.push(`${cantidadChaleco} Chaleco ${talla}`); }); if (items.length > 0) detalle += `${nombre.padEnd(25)} ${items.join(', ')}\n`; else detalle += `${nombre.padEnd(25)} Sin prendas solicitadas\n`; });
+                }
+            }
+            return detalle;
+        }
+        
+        if (accion === 'creacion') {
+            asunto = `🆕 NUEVA SOLICITUD - ${ticket.folio} - ${ticket.solicitante}`;
+            cuerpo = construirDetalleSolicitud() + `\n${'═'.repeat(50)}\n💬 COMENTARIOS ADICIONALES:\n${'─'.repeat(50)}\n${ticket.justificacion || 'Sin justificación'}\n\n${'═'.repeat(50)}\n🔔 Acceda al sistema para gestionar esta solicitud.\nhttps://sistema-solicitudes.empresa.com\n`;
+        } else if (accion === 'revision') {
+            asunto = `🔄 SOLICITUD EN REVISIÓN - ${ticket.folio} - ${ticket.solicitante}`;
+            cuerpo = `🔄 ESTADO: SOLICITUD EN REVISIÓN\n${'═'.repeat(50)}\n\n${construirDetalleSolicitud()}\n${'═'.repeat(50)}\n📝 COMENTARIOS DEL GESTOR:\n${'─'.repeat(50)}\n${comentario || 'Sin comentarios adicionales'}\n\n${'═'.repeat(50)}\n🔔 Su solicitud ha sido marcada para revisión. Pronto recibirá notificación sobre la resolución.\nhttps://sistema-solicitudes.empresa.com\n`;
+        } else if (accion === 'aprobado') {
+            asunto = `✅ SOLICITUD APROBADA - ${ticket.folio} - ${ticket.solicitante}`;
+            cuerpo = `✅ ESTADO: SOLICITUD APROBADA\n${'═'.repeat(50)}\n\n${construirDetalleSolicitud()}\n${'═'.repeat(50)}\n📝 COMENTARIOS DEL GESTOR:\n${'─'.repeat(50)}\n${comentario || 'Sin comentarios adicionales'}\n\n${'═'.repeat(50)}\n✅ Su solicitud ha sido APROBADA. Los productos serán entregados en los próximos días hábiles.\nhttps://sistema-solicitudes.empresa.com\n`;
+        } else if (accion === 'rechazado') {
+            asunto = `❌ SOLICITUD RECHAZADA - ${ticket.folio} - ${ticket.solicitante}`;
+            cuerpo = `❌ ESTADO: SOLICITUD RECHAZADA\n${'═'.repeat(50)}\n\n${construirDetalleSolicitud()}\n${'═'.repeat(50)}\n📝 MOTIVO DEL RECHAZO:\n${'─'.repeat(50)}\n${comentario || 'No se especificó un motivo'}\n\n${'═'.repeat(50)}\n❌ Su solicitud ha sido RECHAZADA. Si tiene dudas, comuníquese con el departamento correspondiente.\nhttps://sistema-solicitudes.empresa.com\n`;
+        }
+        window.open(`mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`, '_blank');
+    }
+    
+    // ========== FUNCIONES DE ELIMINACIÓN ==========
+    async function eliminarSolicitud(ticket) {
+        const result = await Swal.fire({ title: '⚠️ Eliminar Solicitud', html: `¿Está seguro de eliminar la solicitud?<br><br><strong>Folio:</strong> ${ticket.folio}<br><strong>Tipo:</strong> ${ticket.tipo === 'uniformes' ? 'Uniformes' : 'Gafete'}<br><strong>Empleados:</strong> ${ticket.empleados?.length || 0}<br><strong>Estado:</strong> ${ticket.estado}<br><br><span style="color: #c62828;">Esta acción no se puede deshacer.</span>`, icon: 'warning', showCancelButton: true, confirmButtonText: '<i class="fas fa-trash"></i> Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#c62828', cancelButtonColor: '#666' });
+        if (result.isConfirmed) {
+            const index = solicitudes.findIndex(s => s.id === ticket.id);
+            if (index !== -1) { solicitudes.splice(index, 1); guardarDatos(); await saveDataToSupabase(); Swal.fire({ title: '✅ Eliminado', text: 'La solicitud ha sido eliminada correctamente', icon: 'success', timer: 2000, showConfirmButton: false }); actualizarDashboard(); renderMisTickets(); renderGestionar(); renderKanban(); }
+        }
+    }
+    
+    // ========== FUNCIONES DE RENDERIZADO ==========
+    function actualizarDashboard() {
+        const uniformes = solicitudes.filter(s => s.tipo === 'uniformes').length;
+        const gafetes = solicitudes.filter(s => s.tipo === 'gafetes').length;
+        const pendientes = solicitudes.filter(s => s.estado === estados.PENDIENTE || s.estado === estados.REVISION).length;
+        const total = solicitudes.length;
+        document.getElementById('totalUniformes').textContent = uniformes;
+        document.getElementById('totalGafetes').textContent = gafetes;
+        document.getElementById('totalPendientes').textContent = pendientes;
+        document.getElementById('totalTickets').textContent = total;
+    }
+    
+    function renderMisTickets() {
+        const container = document.getElementById('misTicketsContainer');
+        let misTickets = (currentUser.rol === 'administrador') ? solicitudes : solicitudes.filter(s => s.solicitante === currentUser.nombre);
+        if (misTickets.length === 0) { container.innerHTML = '<div class="empty-message"><i class="fas fa-inbox"></i> No hay solicitudes registradas</div>'; return; }
+        let html = '';
+        misTickets.forEach(ticket => { html += generarTicketHTML(ticket, false); });
+        container.innerHTML = html;
+        agregarEventosClickTickets();
+    }
+    
+    function renderGestionar() {
+        const container = document.getElementById('gestionarContainer');
+        const pendientes = solicitudes.filter(s => s.estado !== estados.APROBADO && s.estado !== estados.RECHAZADO);
+        if (pendientes.length === 0) { container.innerHTML = '<div class="empty-message"><i class="fas fa-check-circle"></i> No hay solicitudes pendientes de gestión</div>'; return; }
+        let html = '';
+        pendientes.forEach(ticket => { html += generarTicketHTML(ticket, true); });
+        container.innerHTML = html;
+        agregarEventosClickTickets();
+        agregarEventosBotonesGestion();
+    }
+    
+    function renderKanban() {
+        const board = document.getElementById('kanbanBoard');
+        const estadosLista = [estados.PENDIENTE, estados.REVISION, estados.APROBADO, estados.RECHAZADO];
+        const estadosTitulos = { [estados.PENDIENTE]: '📋 Pendientes', [estados.REVISION]: '🔍 En Revisión', [estados.APROBADO]: '✅ Aprobados', [estados.RECHAZADO]: '❌ Rechazados' };
+        let html = '';
+        estadosLista.forEach(estado => {
+            const ticketsEstado = solicitudes.filter(s => s.estado === estado);
+            html += `<div class="kanban-column"><div class="kanban-title">${estadosTitulos[estado]} (${ticketsEstado.length})</div>`;
+            ticketsEstado.forEach(ticket => { html += `<div class="kanban-card" data-id="${ticket.id}"><div style="font-weight: 700;">${ticket.folio}</div><div style="font-size: 0.7rem; color: #666;">${ticket.empleados?.length || 0} empleados</div><div style="font-size: 0.7rem;">${ticket.tipo === 'uniformes' ? '👕 Unif.' : '🪪 Gafete'}</div><div style="font-size: 0.65rem; margin-top: 5px;"><span class="ticket-status ${ticket.estado === estados.PENDIENTE ? 'status-pendiente' : ticket.estado === estados.REVISION ? 'status-revision' : ticket.estado === estados.APROBADO ? 'status-aprobado' : 'status-rechazado'}" style="font-size: 0.6rem;">${ticket.estado}</span></div></div>`; });
+            html += `</div>`;
+        });
+        board.innerHTML = html;
+        document.querySelectorAll('.kanban-card').forEach(card => { const ticket = solicitudes.find(s => s.id === card.dataset.id); if (ticket) card.addEventListener('click', (e) => { e.stopPropagation(); mostrarDetalleTicket(ticket); }); });
+    }
+    
+    function generarTicketHTML(ticket, mostrarAcciones) {
+        const estadoClass = { [estados.PENDIENTE]: 'status-pendiente', [estados.REVISION]: 'status-revision', [estados.APROBADO]: 'status-aprobado', [estados.RECHAZADO]: 'status-rechazado' };
+        let accionesHTML = '';
+        if (mostrarAcciones && currentUser.rol !== 'solicitante') {
+            accionesHTML = `<div class="ticket-actions"><button class="btn btn-warning btn-revision" data-id="${ticket.id}"><i class="fas fa-search"></i> Revisión</button><button class="btn btn-success btn-aprobar" data-id="${ticket.id}"><i class="fas fa-check"></i> Aprobar</button><button class="btn btn-danger btn-rechazar" data-id="${ticket.id}"><i class="fas fa-times"></i> Rechazar</button></div>`;
+        }
+        return `<div class="ticket-card ${ticket.tipo}" data-id="${ticket.id}"><div class="ticket-header"><span class="ticket-folio"><i class="fas fa-hashtag"></i> ${ticket.folio}</span><span class="ticket-status ${estadoClass[ticket.estado]}">${ticket.estado}</span></div><div class="ticket-body"><div class="ticket-info"><p><i class="fas fa-users"></i> Empleados: ${ticket.empleados?.length || 0}</p><p><i class="fas fa-calendar"></i> Fecha: ${ticket.fecha}</p><p><i class="fas fa-building"></i> Depto: ${ticket.ubicacion}</p><p><i class="fas fa-calendar-alt"></i> Vencimiento: ${ticket.fechaVencimiento || 'Sin fecha'}</p></div><div class="ticket-info"><p><i class="fas fa-comment"></i> Justificación: ${ticket.justificacion?.substring(0, 80) || 'Sin justificación'}</p>${ticket.comentarios ? `<p><i class="fas fa-reply"></i> Respuesta: ${ticket.comentarios}</p>` : ''}</div></div>${accionesHTML}</div>`;
+    }
+    
+    function agregarEventosClickTickets() {
+        document.querySelectorAll('.ticket-card').forEach(card => { const ticket = solicitudes.find(s => s.id === card.dataset.id); if (ticket) card.addEventListener('click', (e) => { if (e.target.classList && e.target.classList.contains('btn')) return; mostrarDetalleTicket(ticket); }); });
+    }
+    
+    function agregarEventosBotonesGestion() {
+        document.querySelectorAll('.btn-revision').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const ticket = solicitudes.find(s => s.id === btn.dataset.id); if (ticket) actualizarEstado(ticket, estados.REVISION); }); });
+        document.querySelectorAll('.btn-aprobar').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const ticket = solicitudes.find(s => s.id === btn.dataset.id); if (ticket) solicitarComentario(ticket, estados.APROBADO); }); });
+        document.querySelectorAll('.btn-rechazar').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const ticket = solicitudes.find(s => s.id === btn.dataset.id); if (ticket) solicitarComentario(ticket, estados.RECHAZADO); }); });
+    }
+    
+    async function mostrarDetalleTicket(ticket) {
+        let detalleHTML = `<div style="text-align: left;"><p><strong>Folio:</strong> ${ticket.folio}</p><p><strong>Tipo:</strong> ${ticket.tipo === 'uniformes' ? 'Uniformes' : 'Gafete'}</p><p><strong>Solicitante:</strong> ${ticket.solicitante || 'No especificado'}</p><p><strong>Ubicación:</strong> ${ticket.ubicacion || 'No especificada'}</p><p><strong>Fecha Expedición:</strong> ${ticket.fechaExpedicion}</p><p><strong>Fecha Vencimiento:</strong> ${ticket.fechaVencimiento || 'Sin fecha'}</p><p><strong>Fecha Registro:</strong> ${ticket.fecha}</p><p><strong>Estado:</strong> ${ticket.estado}</p><p><strong>Justificación:</strong> ${ticket.justificacion || 'Sin justificación'}</p><hr><p><strong>📋 Empleados (${ticket.empleados?.length || 0}):</strong></p>`;
+        if (ticket.empleados && ticket.empleados.length > 0) {
+            if (ticket.tipo === 'uniformes') {
+                detalleHTML += `<table style="width:100%; border-collapse: collapse; font-size: 0.75rem;"><tr style="background: #f5f5f5;"><th>Nombre</th><th colspan="5">Camisas (CH, M, G, XG, XXG)</th><th colspan="5">Chalecos (CH, M, G, XG, XXG)</th></tr>`;
+                ticket.empleados.forEach(emp => { const camisasStr = TALLAS.map(t => `${t}:${emp.camisas?.[t] || 0}`).join(', '); const chalecosStr = TALLAS.map(t => `${t}:${emp.chalecos?.[t] || 0}`).join(', '); detalleHTML += `<tr><td><strong>${emp.nombre || 'N/A'}</strong></td><td colspan="5">${camisasStr}</td><td colspan="5">${chalecosStr}</td></tr>`; });
+                detalleHTML += `</table>`;
+            } else {
+                detalleHTML += `<table style="width:100%; border-collapse: collapse; font-size: 0.75rem;"><tr style="background: #f5f5f5;"><th>Nombre</th><th>N° Empleado</th><th>Puesto</th><th>Tipo Credencial</th></tr>`;
+                ticket.empleados.forEach(emp => { const tipoTexto = emp.tipoCredencial === 'personal' ? 'Personal' : emp.tipoCredencial === 'visitante' ? 'Visitante' : 'Proveedor'; const numEmpleado = (emp.numEmpleado && emp.numEmpleado !== emp.nombre) ? emp.numEmpleado : 'No especificado'; detalleHTML += `<tr><td>${emp.nombre || 'N/A'}</td><td>${numEmpleado}</td><td>${emp.puesto || 'N/A'}</td><td>${tipoTexto}</td></tr>`; });
+                detalleHTML += `</table>`;
+            }
+        }
+        if (ticket.comentarios) detalleHTML += `<hr><p><strong>💬 Comentarios:</strong> ${ticket.comentarios}</p>`;
+        detalleHTML += `</div>`;
+        
+        if (currentUser.rol === 'administrador') {
+            const result = await Swal.fire({ title: 'Detalle de Solicitud', html: detalleHTML, icon: 'info', showConfirmButton: true, showCancelButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar', cancelButtonText: '<i class="fas fa-trash"></i> Eliminar', confirmButtonColor: '#1565c0', cancelButtonColor: '#c62828' });
+            if (result.dismiss === Swal.DismissReason.cancel) await eliminarSolicitud(ticket);
+        } else {
+            await Swal.fire({ title: 'Detalle de Solicitud', html: detalleHTML, icon: 'info', confirmButtonText: 'Cerrar', confirmButtonColor: '#1565c0' });
+        }
+    }
+    
+    async function solicitarComentario(ticket, nuevoEstado) {
+        const { value: comentario } = await Swal.fire({ title: nuevoEstado === estados.APROBADO ? '✅ Aprobar Solicitud' : '❌ Rechazar Solicitud', input: 'textarea', inputLabel: 'Comentarios (obligatorio)', inputPlaceholder: 'Escriba el motivo o comentario...', showCancelButton: true, confirmButtonText: nuevoEstado === estados.APROBADO ? 'Aprobar' : 'Rechazar', cancelButtonText: 'Cancelar', inputValidator: (value) => !value && 'Debe ingresar un comentario' });
+        if (comentario) await actualizarEstado(ticket, nuevoEstado, comentario);
+    }
+    
+    async function actualizarEstado(ticket, nuevoEstado, comentario = '') {
+        ticket.estado = nuevoEstado;
+        ticket.comentarios = comentario;
+        guardarDatos();
+        await saveDataToSupabase();
+        if (nuevoEstado === estados.APROBADO) enviarCorreo(ticket, 'aprobado', comentario);
+        else if (nuevoEstado === estados.RECHAZADO) enviarCorreo(ticket, 'rechazado', comentario);
+        else if (nuevoEstado === estados.REVISION) enviarCorreo(ticket, 'revision', comentario);
+        await Swal.fire({ title: 'Actualizado', text: `Solicitud ${nuevoEstado === estados.APROBADO ? 'aprobada' : nuevoEstado === estados.RECHAZADO ? 'rechazada' : 'en revisión'}`, icon: 'success', timer: 1500, showConfirmButton: false });
+        actualizarDashboard();
+        renderMisTickets();
+        renderGestionar();
+        renderKanban();
+    }
+    
+    // ========== REGISTRAR SOLICITUD ==========
+    async function registrarSolicitud() {
+        const tipo = document.getElementById('tipoSolicitud').value;
+        const ubicacion = document.getElementById('ubicacion').value;
+        const justificacion = document.getElementById('justificacion').value.trim();
+        const fechaExpedicion = document.getElementById('fechaExpedicionGeneral').value;
+        const fechaVencimiento = document.getElementById('fechaVencimientoGeneral').value || '';
+        if (!tipo || !ubicacion || !fechaExpedicion) { Swal.fire('Error', 'Complete los campos obligatorios (Tipo, Ubicación, Fecha de Expedición)', 'warning'); return; }
+        if (empleadosList.length === 0) { Swal.fire('Error', 'Debe agregar al menos un empleado a la solicitud', 'warning'); return; }
+        for (let emp of empleadosList) { if (!emp.nombre || emp.nombre.trim() === '') { Swal.fire('Error', 'Todos los empleados deben tener un nombre', 'warning'); return; } }
+        const folio = generarFolio(tipo);
+        const nuevaSolicitud = { id: Date.now().toString(), folio: folio, tipo: tipo, ubicacion: ubicacion, justificacion: justificacion, fechaExpedicion: fechaExpedicion, fechaVencimiento: fechaVencimiento, fecha: new Date().toLocaleDateString(), solicitante: currentUser.nombre, estado: estados.PENDIENTE, comentarios: null, empleados: JSON.parse(JSON.stringify(empleadosList)) };
+        solicitudes.unshift(nuevaSolicitud);
+        guardarDatos();
+        await saveDataToSupabase();
+        enviarCorreo(nuevaSolicitud, 'creacion');
+        await Swal.fire({ title: '✅ Solicitud registrada', html: `Folio: <strong>${folio}</strong><br>Empleados: ${empleadosList.length}<br>Se ha abierto su cliente de correo con la notificación.`, icon: 'success', confirmButtonText: 'OK' });
+        limpiarFormulario();
+        actualizarDashboard();
+        renderMisTickets();
+        renderGestionar();
+        renderKanban();
+    }
+    
+    function limpiarFormulario() {
+        document.getElementById('tipoSolicitud').value = '';
+        document.getElementById('ubicacion').value = '';
+        document.getElementById('justificacion').value = '';
+        document.getElementById('fechaExpedicionGeneral').value = '';
+        document.getElementById('fechaVencimientoGeneral').value = '';
+        empleadosList = [];
+        guardarEmpleados();
+        renderizarEmpleados();
+    }
+    
+    // ========== UI Y PERMISOS ==========
+    function mostrarFormularioSegunTipo() {
+        const tipo = document.getElementById('tipoSolicitud').value;
+        if (tipo) { actualizarHeadersSegunTipo(); renderizarEmpleados(); }
+        else { document.getElementById('empleadosBody').innerHTML = '<tr><td colspan="5">Seleccione un tipo de solicitud primero</div></tr>'; document.getElementById('empleadosCount').textContent = '(0 empleados)'; }
+    }
+    
+    function configurarPermisosPorRol() {
+        const tabSolicitar = document.getElementById('tabSolicitar'), tabMisTickets = document.getElementById('tabMisTickets'), tabGestionar = document.getElementById('tabGestionar'), tabKanban = document.getElementById('tabKanban');
+        [tabSolicitar, tabMisTickets, tabGestionar, tabKanban].forEach(tab => { if (tab) tab.style.display = 'none'; });
+        switch(currentUser.rol) {
+            case 'solicitante': if (tabSolicitar) tabSolicitar.style.display = 'inline-block'; if (tabMisTickets) tabMisTickets.style.display = 'inline-block'; cambiarPestana('solicitar'); break;
+            case 'coordinador': if (tabGestionar) tabGestionar.style.display = 'inline-block'; if (tabKanban) tabKanban.style.display = 'inline-block'; cambiarPestana('gestionar'); break;
+            case 'administrador': [tabSolicitar, tabMisTickets, tabGestionar, tabKanban].forEach(tab => { if (tab) tab.style.display = 'inline-block'; }); cambiarPestana('solicitar'); break;
+        }
+    }
+    
+    function cambiarPestana(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        const btnActivo = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+        if (btnActivo) btnActivo.classList.add('active');
+        const tabActivo = document.getElementById(tabId);
+        if (tabActivo) tabActivo.classList.add('active');
+    }
+    
+    // ========== LOGIN EXITOSO ==========
+    function iniciarSesionExitosa() {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('btnLogout').style.display = 'block';
+        document.getElementById('sessionTimer').style.display = 'flex';
+        document.getElementById('currentUserName').textContent = currentUser.nombre;
+        const rolText = currentUser.rol === 'solicitante' ? '👤 Solicitante' : currentUser.rol === 'coordinador' ? '📋 Coordinador' : '⚙️ Administrador';
+        document.getElementById('currentUserRole').innerHTML = ` (${rolText})`;
+        document.getElementById('mainApp').classList.remove('app-blur');
+        
+        const ubicacionSelect = document.getElementById('ubicacion');
+        if (ubicacionSelect.children.length <= 1) { ubicacionSelect.innerHTML = '<option value="">Seleccione...</option>'; UBICACIONES_CONFIG.forEach(ubic => { ubicacionSelect.innerHTML += `<option value="${ubic}">${ubic}</option>`; }); }
+        
+        configurarPermisosPorRol();
+        actualizarDashboard();
+        renderMisTickets();
+        renderGestionar();
+        renderKanban();
+        setupDragAndDrop();
+        iniciarContadorReloj();
+        activarDetectorInactividad();
+        reiniciarTemporizadorSesion();
+        guardarSesionEnStorage();
+    }
+    
+    function iniciarSesion() {
+        const usuario = document.getElementById('loginUser').value.trim();
+        const password = document.getElementById('loginPass').value;
+        if (usuarios[usuario] && usuarios[usuario].password === password) {
+            currentUser = { nombre: usuarios[usuario].nombre, rol: usuarios[usuario].rol };
+            cargarDatos();
+            cargarEmpleados();
+            iniciarSesionExitosa();
+        } else {
+            const loginOverlay = document.getElementById('loginOverlay');
+            loginOverlay.style.display = 'none';
+            Swal.fire({ title: 'Error de autenticación', text: 'Usuario o contraseña incorrectos', icon: 'error', confirmButtonColor: '#c62828', timer: 2000, allowOutsideClick: false, didClose: () => { loginOverlay.style.display = 'flex'; document.getElementById('loginPass').value = ''; document.getElementById('loginPass').focus(); } });
+        }
+    }
+    
+    function cerrarSesion() {
+        if (temporizadorInactividad) clearTimeout(temporizadorInactividad);
+        if (temporizadorReloj) clearInterval(temporizadorReloj);
+        localStorage.removeItem('sesionActiva');
+        localStorage.removeItem('usuarioActual');
+        currentUser = null;
+        empleadosList = [];
+        solicitudes = [];
+        nextFolioUniformes = 1;
+        nextFolioGafetes = 1;
+        document.getElementById('btnLogout').style.display = 'none';
+        document.getElementById('sessionTimer').style.display = 'none';
+        document.getElementById('sessionTimer').classList.remove('warning', 'critical');
+        document.getElementById('currentUserName').textContent = 'Invitado';
+        document.getElementById('currentUserRole').innerHTML = '';
+        limpiarFormulario();
+        document.getElementById('misTicketsContainer').innerHTML = '<div class="empty-message"><i class="fas fa-inbox"></i> No hay solicitudes registradas</div>';
+        document.getElementById('gestionarContainer').innerHTML = '<div class="empty-message"><i class="fas fa-inbox"></i> No hay solicitudes pendientes</div>';
+        document.getElementById('kanbanBoard').innerHTML = '';
+        document.getElementById('totalUniformes').textContent = '0';
+        document.getElementById('totalGafetes').textContent = '0';
+        document.getElementById('totalPendientes').textContent = '0';
+        document.getElementById('totalTickets').textContent = '0';
+        document.getElementById('loginOverlay').style.display = 'flex';
+        document.getElementById('loginUser').value = '';
+        document.getElementById('loginPass').value = '';
+        document.getElementById('mainApp').classList.add('app-blur');
+    }
+    
+    // ========== EVENT LISTENERS ==========
+    document.getElementById('btnLogin').addEventListener('click', iniciarSesion);
+    document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
+    document.getElementById('btnRegistrarSolicitud').addEventListener('click', registrarSolicitud);
+    document.getElementById('tipoSolicitud').addEventListener('change', mostrarFormularioSegunTipo);
+    document.getElementById('btnAgregarEmpleado').addEventListener('click', agregarEmpleado);
+    document.getElementById('btnExportarJSON').addEventListener('click', exportarJSON);
+    document.getElementById('btnImportarJSON').addEventListener('click', importarJSON);
+    document.getElementById('btnFormatoGafetes').addEventListener('click', descargarFormatoGafetes);
+    document.getElementById('btnFormatoUniformes').addEventListener('click', descargarFormatoUniformes);
+    document.querySelectorAll('.tab-btn').forEach(btn => { btn.addEventListener('click', () => cambiarPestana(btn.dataset.tab)); });
+    document.getElementById('loginUser').addEventListener('keypress', (e) => { if (e.key === 'Enter') iniciarSesion(); });
+    document.getElementById('loginPass').addEventListener('keypress', (e) => { if (e.key === 'Enter') iniciarSesion(); });
+    
+    flatpickr(".datepicker", { locale: "es", dateFormat: "Y-m-d", allowInput: true });
+    
+    document.getElementById('mainApp').classList.add('app-blur');
+    
+    // Inicialización asíncrona con Supabase
+    (async function() {
+        await loadDataFromSupabase();
+        startAutoSync();
+        startRemoteCheck();
+        
+        if (!verificarSesionAlCargar()) {
+            document.getElementById('loginOverlay').style.display = 'flex';
+        } else {
+            document.getElementById('mainApp').classList.remove('app-blur');
+            iniciarSesionExitosa();
+        }
+    })();
+</script>
+</body>
+</html>
